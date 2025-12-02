@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spinner Quiz Pengetahuan Dunia</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 { color: #333; margin-bottom: 10px; }
+
+        /* Container Spinner */
+        .spinner-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 20px auto;
+        }
+
+        /* Panah Penunjuk */
+        .arrow {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0; 
+            height: 0; 
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 30px solid #333;
+            z-index: 10;
+        }
+
+        /* Roda Spinner */
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 5px solid #fff;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            transition: transform 4s cubic-bezier(0.25, 0.1, 0.25, 1);
+            /* Membuat segmen warna dengan Conic Gradient */
+            background: conic-gradient(
+                #FF5733 0deg 60deg,    /* Sejarah */
+                #33FF57 60deg 120deg,  /* Geografi */
+                #3357FF 120deg 180deg, /* Sains */
+                #F333FF 180deg 240deg, /* Seni & Budaya */
+                #FF33A8 240deg 300deg, /* Olahraga */
+                #FFC300 300deg 360deg  /* Umum */
+            );
+            position: relative;
+            transform: rotate(0deg);
+        }
+
+        /* Label di dalam roda (posisi manual sederhana) */
+        .label {
+            position: absolute;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+            font-size: 14px;
+        }
+        /* Mengatur posisi label agar pas di tengah segmen */
+        .l1 { top: 40px; right: 80px; transform: rotate(30deg); }
+        .l2 { top: 130px; right: 20px; transform: rotate(90deg); }
+        .l3 { bottom: 40px; right: 80px; transform: rotate(150deg); }
+        .l4 { bottom: 40px; left: 80px; transform: rotate(210deg); }
+        .l5 { top: 130px; left: 20px; transform: rotate(270deg); }
+        .l6 { top: 40px; left: 80px; transform: rotate(330deg); }
+
+        /* Tombol */
+        #spinBtn {
+            padding: 15px 40px;
+            font-size: 18px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 30px;
+            transition: 0.3s;
+        }
+        #spinBtn:hover { background-color: #555; }
+        #spinBtn:disabled { background-color: #999; cursor: not-allowed; }
+
+        /* Area Quiz */
+        #quizArea {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .category-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .option-btn {
+            padding: 10px;
+            border: 1px solid #ddd;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: 0.2s;
+        }
+        .option-btn:hover { background-color: #f0f0f0; }
+
+        .correct { background-color: #d4edda !important; border-color: #c3e6cb; }
+        .wrong { background-color: #f8d7da !important; border-color: #f5c6cb; }
+
+        #resultMsg {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🌍 Spinner Pengetahuan Dunia 🌍</h1>
+    <p>Putar roda untuk mendapatkan kategori pertanyaan!</p>
+
+    <div class="spinner-container">
+        <div class="arrow"></div>
+        <div class="wheel" id="wheel">
+            <div class="label l1">Sejarah</div>
+            <div class="label l2">Geografi</div>
+            <div class="label l3">Sains</div>
+            <div class="label l4">Seni</div>
+            <div class="label l5">Olahraga</div>
+            <div class="label l6">Umum</div>
+        </div>
+    </div>
+
+    <button id="spinBtn" onclick="spinWheel()">PUTAR!</button>
+
+    <div id="quizArea">
+        <div class="category-title" id="catTitle">Kategori: -</div>
+        <div id="questionText">Pertanyaan akan muncul di sini...</div>
+        <div class="options" id="optionsContainer">
+            <!-- Opsi jawaban -->
+        </div>
+        <div id="resultMsg"></div>
+        <button id="closeQuizBtn" onclick="closeQuiz()" style="display:none; margin-top:15px; padding:5px 15px;">Tutup</button>
+    </div>
+
+    <script>
+        // --- DATA PERTANYAAN ---
+        const database = {
+            "Sejarah": [
+                { q: "Siapakah manusia pertama yang mendarat di bulan?", options: ["Yuri Gagarin", "Neil Armstrong", "Buzz Aldrin", "Michael Collins"], a: 1 },
+                { q: "Perang Dunia II berakhir pada tahun berapa?", options: ["1942", "1944", "1945", "1950"], a: 2 },
+                { q: "Kerajaan Majapahit berpusat di pulau mana?", options: ["Sumatera", "Jawa", "Kalimantan", "Bali"], a: 1 }
+            ],
+            "Geografi": [
+                { q: "Apa nama ibu kota negara Perancis?", options: ["London", "Berlin", "Madrid", "Paris"], a: 3 },
+                { q: "Sungai terpanjang di dunia adalah...", options: ["Sungai Amazon", "Sungai Nil", "Sungai Yangtze", "Sungai Mississippi"], a: 1 }, // Debatable, tapi Amazon sering dianggap terpanjang & terbesar volume
+                { q: "Gunung tertinggi di dunia adalah...", options: ["K2", "Kilimanjaro", "Everest", "Fuji"], a: 2 }
+            ],
+            "Sains": [
+                { q: "Rumus kimia untuk air adalah...", options: ["CO2", "H2O", "O2", "NaCl"], a: 1 },
+                { q: "Planet mana yang terdekat dengan Matahari?", options: ["Venus", "Bumi", "Mars", "Merkurius"], a: 3 },
+                { q: "Hewan mamalia terbesar di dunia adalah...", options: ["Gajah Afrika", "Paus Biru", "Jerapah", "Hiu Putih"], a: 1 }
+            ],
+            "Seni": [
+                { q: "Siapa pelukis lukisan 'Mona Lisa'?", options: ["Van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Michaelangelo"], a: 2 },
+                { q: "Alat musik Sasando berasal dari daerah...", options: ["Jawa Barat", "Nusa Tenggara Timur", "Maluku", "Papua"], a: 1 },
+                { q: "Film 'Titanic' disutradarai oleh...", options: ["Steven Spielberg", "James Cameron", "Christopher Nolan", "Quentin Tarantino"], a: 1 }
+            ],
+            "Olahraga": [
+                { q: "Berapa jumlah pemain dalam satu tim sepak bola?", options: ["10", "11", "12", "9"], a: 1 },
+                { q: "Negara mana yang memenangkan Piala Dunia 2022?", options: ["Perancis", "Brazil", "Argentina", "Jerman"], a: 2 },
+                { q: "Bulutangkis adalah olahraga yang menggunakan...", options: ["Bola Kasti", "Kok (Shuttlecock)", "Bola Pingpong", "Bola Tangan"], a: 1 }
+            ],
+            "Umum": [
+                { q: "Ada berapa warna dalam pelangi?", options: ["5", "6", "7", "8"], a: 2 },
+                { q: "Mata uang negara Jepang adalah...", options: ["Won", "Yuan", "Yen", "Ringgit"], a: 2 },
+                { q: "Benua terbesar di dunia adalah...", options: ["Afrika", "Amerika Utara", "Asia", "Eropa"], a: 2 }
+            ]
+        };
+
+        let currentRotation = 0;
+        const wheel = document.getElementById('wheel');
+        const spinBtn = document.getElementById('spinBtn');
+        const quizArea = document.getElementById('quizArea');
+
+        // Logika Segmen (Setiap segmen 60 derajat)
+        // Urutan warna di CSS: Sejarah(0-60), Geografi(60-120), Sains(120-180), Seni(180-240), Olahraga(240-300), Umum(300-360)
+        // Karena panah ada di ATAS (0 derajat), kita harus menghitung mundur dari rotasi.
+        const categories = ["Sejarah", "Umum", "Olahraga", "Seni", "Sains", "Geografi"];
+
+        function spinWheel() {
+            // Reset UI
+            quizArea.style.display = "none";
+            spinBtn.disabled = true;
+            spinBtn.innerText = "Memutar...";
+
+            // Hitung rotasi acak (minimal 5 putaran penuh + acak)
+            const randomDegree = Math.floor(Math.random() * 360);
+            const extraSpins = 360 * 5; 
+            const totalRotation = currentRotation + extraSpins + randomDegree;
+            
+            currentRotation = totalRotation;
+            wheel.style.transform = `rotate(${currentRotation}deg)`;
+
+            // Tunggu animasi selesai (4 detik sesuai CSS)
+            setTimeout(() => {
+                calculateWinner(currentRotation);
+                spinBtn.disabled = false;
+                spinBtn.innerText = "PUTAR LAGI";
+            }, 4000);
+        }
+
+        function calculateWinner(rotation) {
+            // Normalisasi rotasi ke 0-360
+            const actualDeg = rotation % 360;
+            // Hitung index kategori
+            // Setiap segmen 60 derajat.
+            const index = Math.floor(actualDeg / 60);
+            
+            // Karena rotasi searah jarum jam, urutan kategori di array harus dibalik atau disesuaikan dengan posisi panah.
+            // Panah statis di atas. Jika roda berputar 30 derajat (masih di segmen 1), panah menunjuk segmen terakhir secara visual jika tidak dihandle.
+            // Rumus index di atas memetakan: 
+            // 0-59 deg -> Index 0
+            // 60-119 deg -> Index 1 ... dst.
+            
+            // Mapping Array Categories harus:
+            // 0-60 (Index 0): Bagian awal roda (Sejarah) LEWAT ke kanan. Panah di atas menunjuk segmen SEBELUMNYA (Umum/Olahraga/dst).
+            // Cara termudah: Gunakan sisa pembagian terbalik.
+            // Panah menunjuk ke: (360 - (actualDeg % 360)) % 360
+            
+            const degreesFromTop = (360 - actualDeg) % 360;
+            const segmentIndex = Math.floor(degreesFromTop / 60);
+            
+            // Urutan segmen visual searah jarum jam:
+            // 0: Sejarah, 1: Geografi, 2: Sains, 3: Seni, 4: Olahraga, 5: Umum
+            const visualCategories = ["Sejarah", "Geografi", "Sains", "Seni", "Olahraga", "Umum"];
+            
+            const chosenCategory = visualCategories[segmentIndex];
+            showQuiz(chosenCategory);
+        }
+
+        function showQuiz(category) {
+            const questionData = database[category];
+            // Ambil pertanyaan acak dari kategori tsb
+            const randQ = questionData[Math.floor(Math.random() * questionData.length)];
+
+            document.getElementById('catTitle').innerText = "Kategori: " + category;
+            document.getElementById('catTitle').style.color = getCategoryColor(category);
+            document.getElementById('questionText').innerText = randQ.q;
+            
+            const optsDiv = document.getElementById('optionsContainer');
+            optsDiv.innerHTML = ""; // Bersihkan opsi lama
+            document.getElementById('resultMsg').innerHTML = "";
+            document.getElementById('closeQuizBtn').style.display = "none";
+
+            // Buat tombol opsi
+            randQ.options.forEach((opt, idx) => {
+                const btn = document.createElement('div');
+                btn.className = "option-btn";
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(idx, randQ.a, btn, randQ.options);
+                optsDiv.appendChild(btn);
+            });
+
+            quizArea.style.display = "block";
+            // Scroll ke area kuis di HP
+            quizArea.scrollIntoView({behavior: "smooth"});
+        }
+
+        function getCategoryColor(cat) {
+            switch(cat) {
+                case "Sejarah": return "#FF5733";
+                case "Geografi": return "#33FF57";
+                case "Sains": return "#3357FF";
+                case "Seni": return "#F333FF";
+                case "Olahraga": return "#FF33A8";
+                case "Umum": return "#FFC300";
+                default: return "#333";
+            }
+        }
+
+        function checkAnswer(selectedIdx, correctIdx, btnElement, allOptions) {
+            const allBtns = document.querySelectorAll('.option-btn');
+            
+            // Disable klik lagi
+            allBtns.forEach(b => b.onclick = null);
+
+            if (selectedIdx === correctIdx) {
+                btnElement.classList.add('correct');
+                document.getElementById('resultMsg').innerHTML = "<span style='color:green'>JAWABAN BENAR! 🎉</span>";
+            } else {
+                btnElement.classList.add('wrong');
+                // Tunjukkan jawaban yang benar
+                allBtns[correctIdx].classList.add('correct');
+                document.getElementById('resultMsg').innerHTML = "<span style='color:red'>SALAH! Jawaban yang benar ditandai hijau.</span>";
+            }
+            document.getElementById('closeQuizBtn').style.display = "inline-block";
+        }
+
+        function closeQuiz() {
+            quizArea.style.display = "none";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
